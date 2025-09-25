@@ -5,10 +5,9 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: fullstack_postgres
+    env_file:
+      - ./backend/.env
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-fullstack_db}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
       POSTGRES_HOST_AUTH_METHOD: trust
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
@@ -25,6 +24,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: fullstack_backend
+    env_file:
+      - ./backend/.env
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres123@postgres:5432/fullstack_db}
       POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
