@@ -1,0 +1,33 @@
+# Use Python 3.13 slim image
+FROM python:3.13-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Poetry
+RUN pip install poetry
+
+# Configure Poetry
+RUN poetry config virtualenvs.create false
+
+# Copy Poetry files
+COPY pyproject.toml poetry.lock README.md ./
+
+# Copy source code
+COPY src/ ./src/
+
+# Install dependencies (including dev dependencies for development)
+RUN poetry install
+
+
+# Expose port
+EXPOSE 8000
+
+# Run the application in development mode with hot reload
+CMD ["fastapi", "dev", "src/backend/app.py", "--host", "0.0.0.0", "--port", "8000"]
