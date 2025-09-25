@@ -23,13 +23,14 @@ Este é um projeto fullstack moderno desenvolvido como parte do programa Fullsta
 
 ### Características Principais:
 - ✅ **Autenticação JWT** completa com login/registro
-- ✅ **Sistema de Tarefas** com CRUD completo
+- ✅ **Sistema de Tarefas** com CRUD completo e paginação
 - ✅ **Interface Moderna** com Tailwind CSS e modo escuro
 - ✅ **Validação Type-Safe** com Zod
-- ✅ **API RESTful** com FastAPI
-- ✅ **Banco de Dados PostgreSQL** com migrações
-- ✅ **Containerização** com Docker
+- ✅ **API RESTful** com FastAPI e paginação otimizada
+- ✅ **Banco de Dados PostgreSQL** com migrações e UUIDs
+- ✅ **Containerização** completa com Docker Compose
 - ✅ **TypeScript** em todo o frontend
+- ✅ **Componentes Reutilizáveis** com Pagination avançada
 
 ---
 
@@ -139,10 +140,10 @@ docker-compose up --build
 ```
 
 **Serviços disponíveis:**
-- **Frontend**: http://localhost:3000
-- **Backend**: http://localhost:8000
-- **Database**: localhost:5432
-- **API Docs**: http://localhost:8000/docs
+- **Frontend**: http://localhost:3000 (Next.js com Docker)
+- **Backend**: http://localhost:8000 (FastAPI com Docker)
+- **Database**: localhost:5432 (PostgreSQL 15-alpine)
+- **API Docs**: http://localhost:8000/docs (Swagger UI)
 
 ### Opção 2: Desenvolvimento Local
 
@@ -208,10 +209,11 @@ docker run --name postgres-dev \
 - Validação em tempo real
 
 #### Gerenciamento de Tarefas
-- **Listar**: Todas as tarefas do usuário
+- **Listar**: Todas as tarefas do usuário com paginação
 - **Editar**: Modal com formulário completo
 - **Excluir**: Confirmação antes da exclusão
 - **Toggle Status**: Alternar entre concluída/pendente
+- **Paginação**: Navegação por páginas com controle de tamanho
 - **Filtros**: Por status e prioridade
 
 #### Interface Intuitiva
@@ -247,10 +249,19 @@ fullstack-jr-2025-2/
 │   │   │   ├── register/     # Página de registro
 │   │   │   └── tasks/        # Página de tarefas
 │   │   ├── components/       # Componentes React
+│   │   │   ├── Pagination.tsx # Componente de paginação
+│   │   │   └── ProtectedRoute.tsx # Proteção de rotas
 │   │   ├── hooks/           # Hooks customizados
+│   │   │   ├── useTasks.ts  # Hooks para tarefas (com paginação)
+│   │   │   ├── useAuth.ts   # Hook de autenticação
+│   │   │   └── useApi.ts    # Hook base para API
 │   │   ├── lib/             # Utilitários e configurações
+│   │   │   ├── validations.ts # Schemas Zod
+│   │   │   └── api.ts       # Cliente API
 │   │   └── contexts/        # Contextos React
+│   │       └── AuthContext.tsx # Contexto de autenticação
 │   ├── public/              # Arquivos estáticos
+│   ├── Dockerfile           # Container frontend
 │   ├── package.json         # Dependências Node.js
 │   └── tailwind.config.ts   # Configuração Tailwind
 ├── docker-compose.yml        # Orquestração containers
@@ -311,7 +322,14 @@ fullstack-jr-2025-2/
 ### Tarefas (`/api/tasks`)
 
 #### GET `/api/tasks`
-**Listar tarefas do usuário** (requer autenticação)
+**Listar tarefas do usuário com paginação** (requer autenticação)
+
+**Parâmetros de Query:**
+- `page` (opcional): Número da página (padrão: 1)
+- `size` (opcional): Tamanho da página (padrão: 10, máximo: 100)
+
+**Exemplo:** `/api/tasks?page=1&size=10`
+
 **Resposta:**
 ```json
 {
@@ -326,7 +344,13 @@ fullstack-jr-2025-2/
       "created_at": "2024-01-01T10:00:00",
       "updated_at": "2024-01-01T10:00:00"
     }
-  ]
+  ],
+  "total": 25,
+  "page": 1,
+  "size": 10,
+  "pages": 3,
+  "has_next": true,
+  "has_prev": false
 }
 ```
 
@@ -387,14 +411,15 @@ fullstack-jr-2025-2/
   - Link para página de login
 
 ### ✅ Página de Tarefas (`/tasks`)
-- **Descrição**: Gerenciamento completo de tarefas
+- **Descrição**: Gerenciamento completo de tarefas com paginação
 - **Funcionalidades**:
   - **Proteção de rota**: Requer autenticação
-  - **Listagem**: Todas as tarefas do usuário
+  - **Listagem**: Todas as tarefas do usuário com paginação
   - **Criação**: Formulário inline para nova tarefa
   - **Edição**: Modal com formulário completo
   - **Exclusão**: Botão com confirmação
   - **Toggle**: Alternar status concluída/pendente
+  - **Paginação**: Navegação por páginas com controle de tamanho
   - **Filtros visuais**: Cores por status e prioridade
   - **Responsivo**: Adaptado para mobile
 
@@ -403,7 +428,38 @@ fullstack-jr-2025-2/
 - **Formulário de Criação**: Campos para nova tarefa
 - **Lista de Tarefas**: Cards com informações completas
 - **Modal de Edição**: Formulário para editar tarefa existente
+- **Componente Pagination**: Navegação avançada com controles
 - **Estados**: Loading, erro e lista vazia
+
+---
+
+## 🆕 Melhorias Implementadas
+
+### Sistema de Paginação
+- **Backend**: Implementação de paginação otimizada na API com parâmetros `page` e `size`
+- **Frontend**: Componente `Pagination` reutilizável com controles avançados
+- **Hooks**: Novos hooks `useTasksPaginated` e `useTaskManagementPaginated`
+- **Interface**: Navegação intuitiva com informações de total e páginas
+
+### Componentes Reutilizáveis
+- **Pagination.tsx**: Componente completo com:
+  - Navegação por páginas (primeira, anterior, próxima, última)
+  - Seletor de tamanho da página (5, 10, 20, 50 itens)
+  - Exibição inteligente de números de página com ellipsis
+  - Informações detalhadas de paginação
+  - Design responsivo e modo escuro
+
+### Melhorias na API
+- **Schemas**: Novos schemas `PaginatedTaskList` e `TaskUpdate`
+- **Endpoints**: Atualização do endpoint `/api/tasks` com suporte a paginação
+- **Performance**: Otimização de queries com `offset` e `limit`
+- **Validação**: Parâmetros de query validados com limites
+
+### Containerização Completa
+- **Docker Compose**: Adição do serviço frontend containerizado
+- **Multi-stage builds**: Otimização de builds para produção
+- **Volumes**: Configuração de volumes para desenvolvimento
+- **Networks**: Rede isolada para comunicação entre serviços
 
 ---
 
@@ -615,9 +671,14 @@ npm run type-check           # Verificar tipos
 ```bash
 # Gerenciamento de containers
 docker-compose up -d         # Executar em background
+docker-compose up --build    # Rebuild e executar
 docker-compose down          # Parar containers
+docker-compose down -v       # Parar e remover volumes
 docker-compose restart       # Reiniciar containers
 docker-compose logs -f       # Ver logs em tempo real
+docker-compose logs frontend # Logs específicos do frontend
+docker-compose logs backend  # Logs específicos do backend
+docker-compose logs postgres # Logs específicos do banco
 ```
 
 ---

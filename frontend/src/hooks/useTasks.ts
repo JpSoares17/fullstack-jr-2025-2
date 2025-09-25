@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useApi, useApiPost, useApiPut, useApiDelete } from './useApi';
-import { Task, CreateTask, UpdateTask } from '@/lib/validations';
+import { Task, CreateTask, UpdateTask, PaginatedTasks } from '@/lib/validations';
 import { useAuth } from './useAuth';
 import { apiClient } from '@/lib/api';
 
-// Hook para buscar todas as tarefas
+// Hook para buscar todas as tarefas (sem paginação - para compatibilidade)
 export function useTasks() {
   const { token, isAuthenticated } = useAuth();
   
-  return useApi<{ tasks: Task[] }>('/api/tasks', { 
+  return useApi<{ tasks: Task[] }>('/api/tasks/', { 
     immediate: isAuthenticated && !!token,
     onError: (error) => {
       console.error('Erro ao carregar tarefas:', error);
@@ -16,9 +16,21 @@ export function useTasks() {
   });
 }
 
+// Hook para buscar tarefas com paginação
+export function useTasksPaginated(page: number = 1, size: number = 10) {
+  const { token, isAuthenticated } = useAuth();
+  
+  return useApi<PaginatedTasks>(`/api/tasks/?page=${page}&size=${size}`, { 
+    immediate: isAuthenticated && !!token,
+    onError: (error) => {
+      console.error('Erro ao carregar tarefas paginadas:', error);
+    },
+  });
+}
+
 // Hook para criar uma nova tarefa
 export function useCreateTask() {
-  return useApiPost<Task>('/api/tasks', {
+  return useApiPost<Task>('/api/tasks/', {
     onSuccess: (data) => {
       console.log('✅ Tarefa criada com sucesso:', data);
     },
@@ -42,7 +54,7 @@ export function useUpdateTask(id: string) {
 
 // Hook para deletar uma tarefa
 export function useDeleteTask() {
-  return useApiDelete<{ message: string }>(`/api/tasks`, {
+  return useApiDelete<{ message: string }>(`/api/tasks/`, {
     onSuccess: (data) => {
       console.log('✅ Tarefa deletada com sucesso:', data);
     },
@@ -52,7 +64,7 @@ export function useDeleteTask() {
   });
 }
 
-// Hook customizado para gerenciar tarefas com operações CRUD
+// Hook customizado para gerenciar tarefas com operações CRUD (sem paginação)
 export function useTaskManagement() {
   const { token, isAuthenticated } = useAuth();
   const { data: tasksEnvelope, loading: tasksLoading, error: tasksError, refetch: refetchTasks } = useTasks();
@@ -123,6 +135,108 @@ export function useTaskManagement() {
   return {
     // Dados
     tasks,
+    
+
+    // Estados de loading
+    loading: tasksLoading || createLoading || deleteLoading,
+    tasksLoading,
+    createLoading,
+    deleteLoading,
+    
+    // Erros
+    error: tasksError || createError || deleteError,
+    tasksError,
+    createError,
+    deleteError,
+    
+    // Ações
+    refetchTasks,
+    createTask: handleCreateTask,
+    deleteTask: handleDeleteTask,
+    toggleTask: handleToggleTask,
+    updateTask: handleUpdateTask,
+  };
+}
+
+// Hook customizado para gerenciar tarefas com paginação
+export function useTaskManagementPaginated(page: number = 1, size: number = 10) {
+  const { token, isAuthenticated } = useAuth();
+  const { data: paginatedData, loading: tasksLoading, error: tasksError, refetch: refetchTasks } = useTasksPaginated(page, size);
+  
+  const tasks = paginatedData?.tasks ?? [];
+  const pagination = paginatedData ? {
+    total: paginatedData.total,
+    page: paginatedData.page,
+    size: paginatedData.size,
+    pages: paginatedData.pages,
+    hasNext: paginatedData.has_next,
+    hasPrev: paginatedData.has_prev,
+  } : null;
+  
+  const { execute: createTask, loading: createLoading, error: createError } = useCreateTask();
+  const { execute: deleteTask, loading: deleteLoading, error: deleteError } = useDeleteTask();
+
+  const handleCreateTask = async (taskData: CreateTask) => {
+    if (!isAuthenticated || !token) {
+      console.error('Usuário não autenticado');
+      return;
+    }
+    
+    try {
+      await createTask(taskData);
+      await refetchTasks(); // Recarrega a lista após criar
+    } catch (error) {
+      console.error('Erro ao criar tarefa:', error);
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (!isAuthenticated || !token) {
+      console.error('Usuário não autenticado');
+      return;
+    }
+    
+    try {
+      await apiClient.delete<void>(`/api/tasks/${taskId}`);
+      await refetchTasks(); // Recarrega a lista após deletar
+    } catch (error) {
+      console.error('Erro ao deletar tarefa:', error);
+    }
+  };
+
+  const handleToggleTask = async (taskId: string, status: string) => {
+    if (!isAuthenticated || !token) {
+      console.error('Usuário não autenticado');
+      return;
+    }
+    
+    try {
+      // Usar apiClient diretamente para evitar problemas com hooks
+      await apiClient.put(`/api/tasks/${taskId}`, { status });
+      await refetchTasks(); // Recarrega a lista após atualizar
+    } catch (error) {
+      console.error('Erro ao atualizar tarefa:', error);
+    }
+  };
+
+  const handleUpdateTask = async (taskId: string, taskData: UpdateTask) => {
+    if (!isAuthenticated || !token) {
+      console.error('Usuário não autenticado');
+      return;
+    }
+    
+    try {
+      await apiClient.put(`/api/tasks/${taskId}`, taskData);
+      await refetchTasks(); // Recarrega a lista após atualizar
+    } catch (error) {
+      console.error('Erro ao atualizar tarefa:', error);
+    }
+  };
+
+  return {
+    // Dados
+    tasks,
+    pagination,
     
     // Estados de loading
     loading: tasksLoading || createLoading || deleteLoading,

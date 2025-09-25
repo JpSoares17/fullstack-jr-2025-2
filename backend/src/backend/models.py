@@ -4,12 +4,11 @@ from uuid import UUID
 
 from sqlalchemy import DateTime, ForeignKey, String, func, text
 from sqlalchemy.dialects.postgresql import UUID as PostgresUUID
-from sqlalchemy.orm import Mapped, mapped_column, registry, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-table_registry = registry()
+from backend.database import Base
 
-@table_registry.mapped
-class Task():
+class Task(Base):
     __tablename__ = "tasks"
 
     id: Mapped[UUID] = mapped_column(PostgresUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
@@ -17,14 +16,13 @@ class Task():
     description: Mapped[str] = mapped_column(String, nullable=False)
     status: Mapped[str] = mapped_column(String, nullable=False)
     priority: Mapped[str] = mapped_column(String, nullable=False)
-    due_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    due_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), server_onupdate=func.now())
     user_id: Mapped[UUID] = mapped_column(PostgresUUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     user: Mapped["User"] = relationship("User", back_populates="tasks")
 
-@table_registry.mapped
-class User():
+class User(Base):
     __tablename__ = "users"
 
     id: Mapped[UUID] = mapped_column(PostgresUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))

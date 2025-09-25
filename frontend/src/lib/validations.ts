@@ -96,6 +96,17 @@ export const createTaskSchema = taskSchema.omit({
 // Schema para atualizar tarefa (sem id, pois ele vem na URL)
 export const updateTaskSchema = taskSchema.partial().omit({ id: true });
 
+// Schema para resposta paginada de tarefas
+export const paginatedTasksSchema = z.object({
+  tasks: z.array(taskSchema),
+  total: z.number(),
+  page: z.number(),
+  size: z.number(),
+  pages: z.number(),
+  has_next: z.boolean(),
+  has_prev: z.boolean(),
+});
+
 // Tipos TypeScript derivados dos schemas
 export type User = z.infer<typeof userSchema>;
 export type CreateUser = z.infer<typeof createUserSchema>;
@@ -107,6 +118,7 @@ export type LogoutResponse = z.infer<typeof logoutResponseSchema>;
 export type Task = z.infer<typeof taskSchema>;
 export type CreateTask = z.infer<typeof createTaskSchema>;
 export type UpdateTask = z.infer<typeof updateTaskSchema>;
+export type PaginatedTasks = z.infer<typeof paginatedTasksSchema>;
 export type ApiResponse<T = any> = z.infer<typeof apiResponseSchema> & {
   data?: T;
 };

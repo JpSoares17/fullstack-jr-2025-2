@@ -53,7 +53,7 @@ class TaskSchema(BaseModel):
     description: str
     status: str = "pending"
     priority: str = "medium"
-    due_date: datetime
+    due_date: datetime | None = None
 
 
 class TaskDB(TaskSchema):
@@ -69,13 +69,23 @@ class TaskPublic(BaseModel):
     description: str
     status: str
     priority: str
-    due_date: datetime
+    due_date: datetime | None
     created_at: datetime
     updated_at: datetime
 
 
 class TaskList(BaseModel):
     tasks: list[TaskPublic]
+
+
+class PaginatedTaskList(BaseModel):
+    tasks: list[TaskPublic]
+    total: int
+    page: int
+    size: int
+    pages: int
+    has_next: bool
+    has_prev: bool
 
 
 class TaskUpdate(BaseModel):

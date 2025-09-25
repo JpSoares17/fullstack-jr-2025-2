@@ -1,14 +1,14 @@
 from uuid import UUID
 
 from backend.database import get_session
-from fastapi import APIRouter, HTTPException, status, Depends
-from sqlalchemy import select
+from fastapi import APIRouter, HTTPException, status, Depends, Query
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from backend.schemas import (
     UserPublic, UserSchema, 
     LoginRequest, LoginResponse, LogoutResponse, TaskSchema, TaskPublic, 
-    TaskList, TaskUpdate
+    TaskList, PaginatedTaskList, TaskUpdate
 )
 from backend.models import User, Task
 from backend.auth import (
@@ -118,14 +118,60 @@ def get_current_user_info(current_user: User = Depends(get_current_user)):
 
 # Endpoints de Tarefas
 @tasks_router.get(
-    '/', response_model=TaskList, status_code=status.HTTP_200_OK
+    '/', response_model=PaginatedTaskList, status_code=status.HTTP_200_OK
 )
-def list_tasks(current_user: User = Depends(get_current_user), db_session:Session = Depends(get_session)):
+def list_tasks(
+    page: int = Query(1, ge=1, description="Número da página"),
+    size: int = Query(10, ge=1, le=100, description="Tamanho da página"),
+    current_user: User = Depends(get_current_user), 
+    db_session: Session = Depends(get_session)
+):
+    # Calcular offset
+    offset = (page - 1) * size
+    
+    # Contar total de tarefas do usuário
+    total_count = db_session.scalar(
+        select(func.count(Task.id)).where(Task.user_id == current_user.id)
+    )
+    
+    # Buscar tarefas com paginação
     tasks = db_session.scalars(
-        select(Task).where(Task.user_id == current_user.id)
+        select(Task)
+        .where(Task.user_id == current_user.id)
+        .offset(offset)
+        .limit(size)
+        .order_by(Task.created_at.desc())
     ).all()
     
-    return {'tasks': tasks}
+    # Calcular informações de paginação
+    total_pages = (total_count + size - 1) // size  # Ceiling division
+    has_next = page < total_pages
+    has_prev = page > 1
+    
+    # Converter Task objects para TaskPublic
+    task_publics = [
+        TaskPublic(
+            id=task.id,
+            title=task.title,
+            description=task.description,
+            status=task.status,
+            priority=task.priority,
+            due_date=task.due_date,
+            created_at=task.created_at,
+            updated_at=task.updated_at
+        )
+        for task in tasks
+    ]
+    
+    return PaginatedTaskList(
+        tasks=task_publics,
+        total=total_count,
+        page=page,
+        size=size,
+        pages=total_pages,
+        has_next=has_next,
+        has_prev=has_prev
+    )
 
 
 @tasks_router.post(

@@ -3,15 +3,30 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { useTaskManagement } from '@/hooks/useTasks';
+import { useTaskManagementPaginated } from '@/hooks/useTasks';
 import { CreateTask, createTaskSchema, UpdateTask, updateTaskSchema, Task } from '@/lib/validations';
 import { validateData } from '@/lib/zod-utils';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { Pagination } from '@/components/Pagination';
 
 export default function TasksPage() {
   const router = useRouter();
   const { user, logout } = useAuth();
-  const { tasks, loading, error, createTask, deleteTask, toggleTask, updateTask } = useTaskManagement();
+  
+  // Estados de paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  
+  const { 
+    tasks, 
+    pagination, 
+    loading, 
+    error, 
+    createTask, 
+    deleteTask, 
+    toggleTask, 
+    updateTask 
+  } = useTaskManagementPaginated(currentPage, pageSize);
   
   const [showForm, setShowForm] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -200,6 +215,16 @@ export default function TasksPage() {
     setEditFormError('');
   };
 
+  // Funções de paginação
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleSizeChange = (size: number) => {
+    setPageSize(size);
+    setCurrentPage(1); // Voltar para a primeira página ao mudar o tamanho
+  };
+
   return (
     <ProtectedRoute>
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -365,7 +390,7 @@ export default function TasksPage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Suas Tarefas ({tasks?.length || 0})
+              Suas Tarefas {pagination ? `(${pagination.total})` : `(${tasks?.length || 0})`}
             </h2>
           </div>
 
@@ -472,6 +497,20 @@ export default function TasksPage() {
                 </div>
               ))}
             </div>
+          )}
+
+          {/* Componente de paginação */}
+          {pagination && pagination.total > 0 && (
+            <Pagination
+              currentPage={pagination.page}
+              totalPages={pagination.pages}
+              hasNext={pagination.hasNext}
+              hasPrev={pagination.hasPrev}
+              onPageChange={handlePageChange}
+              onSizeChange={handleSizeChange}
+              currentSize={pagination.size}
+              total={pagination.total}
+            />
           )}
         </div>
 
