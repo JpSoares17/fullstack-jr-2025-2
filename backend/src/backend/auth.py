@@ -9,7 +9,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from backend.settings import settings
+from decouple import config
 from backend.models import User
 
 # Configuração para hash de senhas
@@ -19,7 +19,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
 # Engine global para conexão com banco
-engine = create_engine(settings.DATABASE_URL)
+engine = create_engine(config("DATABASE_URL"))
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -38,17 +38,17 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.utcnow() + timedelta(minutes=int(config('JWT_ACCESS_TOKEN_EXPIRE_MINUTES')))
     
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, config("JWT_SECRET_KEY"), algorithm=config("JWT_ALGORITHM"))
     return encoded_jwt
 
 
 def verify_token(token: str) -> dict:
     """Verifica e decodifica um token JWT"""
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        payload = jwt.decode(token, config("JWT_SECRET_KEY"), algorithms=[config("JWT_ALGORITHM")])
         return payload
     except JWTError:
         raise HTTPException(

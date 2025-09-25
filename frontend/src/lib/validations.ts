@@ -41,6 +41,17 @@ export const searchFiltersSchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).default('asc'),
 });
 
+// Schema para cadastro
+export const registerSchema = z.object({
+  name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome deve ter no máximo 100 caracteres'),
+  email: z.string().email('Email inválido'),
+  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres').max(100, 'Senha deve ter no máximo 100 caracteres'),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Senhas não coincidem",
+  path: ["confirmPassword"],
+});
+
 // Schema para login
 export const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -56,6 +67,11 @@ export const authResponseSchema = z.object({
     email: z.string().email(),
     name: z.string().optional(),
   }),
+});
+
+// Schema para resposta de logout
+export const logoutResponseSchema = z.object({
+  message: z.string(),
 });
 
 // Schema para tarefa
@@ -77,15 +93,17 @@ export const createTaskSchema = taskSchema.omit({
   updated_at: true,
 });
 
-// Schema para atualizar tarefa
-export const updateTaskSchema = taskSchema.partial().required({ id: true });
+// Schema para atualizar tarefa (sem id, pois ele vem na URL)
+export const updateTaskSchema = taskSchema.partial().omit({ id: true });
 
 // Tipos TypeScript derivados dos schemas
 export type User = z.infer<typeof userSchema>;
 export type CreateUser = z.infer<typeof createUserSchema>;
 export type UpdateUser = z.infer<typeof updateUserSchema>;
+export type RegisterData = z.infer<typeof registerSchema>;
 export type LoginData = z.infer<typeof loginSchema>;
 export type AuthResponse = z.infer<typeof authResponseSchema>;
+export type LogoutResponse = z.infer<typeof logoutResponseSchema>;
 export type Task = z.infer<typeof taskSchema>;
 export type CreateTask = z.infer<typeof createTaskSchema>;
 export type UpdateTask = z.infer<typeof updateTaskSchema>;

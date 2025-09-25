@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiClient, ApiResponse, ApiError } from '@/lib/api';
 
 // Tipos para o hook
@@ -27,13 +27,25 @@ export function useApi<T = any>(
     error: null,
   });
 
+  // Manter handlers estáveis entre renders para não recriar execute
+  const onSuccessRef = useRef<typeof onSuccess>();
+  const onErrorRef = useRef<typeof onError>();
+
+  useEffect(() => {
+    onSuccessRef.current = onSuccess;
+  }, [onSuccess]);
+
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
+
   const execute = useCallback(async (config?: any) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     
     try {
       const response = await apiClient.get<T>(url, config);
       setState({ data: response, loading: false, error: null });
-      onSuccess?.(response);
+      onSuccessRef.current?.(response);
       return response;
     } catch (error: any) {
       const apiError: ApiError = {
@@ -43,10 +55,10 @@ export function useApi<T = any>(
       };
       
       setState({ data: null, loading: false, error: apiError });
-      onError?.(apiError);
+      onErrorRef.current?.(apiError);
       throw apiError;
     }
-  }, [url, onSuccess, onError]);
+  }, [url]);
 
   useEffect(() => {
     if (immediate) {

@@ -1,13 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useApi, useApiPost, useApiPut, useApiDelete } from './useApi';
 import { Task, CreateTask, UpdateTask } from '@/lib/validations';
 import { useAuth } from './useAuth';
+import { apiClient } from '@/lib/api';
 
 // Hook para buscar todas as tarefas
 export function useTasks() {
   const { token, isAuthenticated } = useAuth();
   
-  return useApi<Task[]>('/api/tasks', { 
+  return useApi<{ tasks: Task[] }>('/api/tasks', { 
     immediate: isAuthenticated && !!token,
     onError: (error) => {
       console.error('Erro ao carregar tarefas:', error);
@@ -41,7 +42,7 @@ export function useUpdateTask(id: string) {
 
 // Hook para deletar uma tarefa
 export function useDeleteTask() {
-  return useApiDelete<{ message: string }>('/api/tasks', {
+  return useApiDelete<{ message: string }>(`/api/tasks`, {
     onSuccess: (data) => {
       console.log('✅ Tarefa deletada com sucesso:', data);
     },
@@ -54,10 +55,13 @@ export function useDeleteTask() {
 // Hook customizado para gerenciar tarefas com operações CRUD
 export function useTaskManagement() {
   const { token, isAuthenticated } = useAuth();
-  const { data: tasks, loading: tasksLoading, error: tasksError, refetch: refetchTasks } = useTasks();
+  const { data: tasksEnvelope, loading: tasksLoading, error: tasksError, refetch: refetchTasks } = useTasks();
+  
+  const tasks = tasksEnvelope?.tasks ?? [];
   
   const { execute: createTask, loading: createLoading, error: createError } = useCreateTask();
   const { execute: deleteTask, loading: deleteLoading, error: deleteError } = useDeleteTask();
+  
 
   const handleCreateTask = async (taskData: CreateTask) => {
     if (!isAuthenticated || !token) {
@@ -80,7 +84,7 @@ export function useTaskManagement() {
     }
     
     try {
-      await deleteTask({ params: { id: taskId } });
+      await apiClient.delete<void>(`/api/tasks/${taskId}`);
       await refetchTasks(); // Recarrega a lista após deletar
     } catch (error) {
       console.error('Erro ao deletar tarefa:', error);
@@ -94,8 +98,22 @@ export function useTaskManagement() {
     }
     
     try {
-      const { execute: updateTask } = useUpdateTask(taskId);
-      await updateTask({ status });
+      // Usar apiClient diretamente para evitar problemas com hooks
+      await apiClient.put(`/api/tasks/${taskId}`, { status });
+      await refetchTasks(); // Recarrega a lista após atualizar
+    } catch (error) {
+      console.error('Erro ao atualizar tarefa:', error);
+    }
+  };
+
+  const handleUpdateTask = async (taskId: string, taskData: UpdateTask) => {
+    if (!isAuthenticated || !token) {
+      console.error('Usuário não autenticado');
+      return;
+    }
+    
+    try {
+      await apiClient.put(`/api/tasks/${taskId}`, taskData);
       await refetchTasks(); // Recarrega a lista após atualizar
     } catch (error) {
       console.error('Erro ao atualizar tarefa:', error);
@@ -123,5 +141,6 @@ export function useTaskManagement() {
     createTask: handleCreateTask,
     deleteTask: handleDeleteTask,
     toggleTask: handleToggleTask,
+    updateTask: handleUpdateTask,
   };
 }

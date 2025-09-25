@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { AuthResponse, LoginData } from '@/lib/validations';
+import { AuthResponse, LoginData, LogoutResponse, RegisterData } from '@/lib/validations';
 import { apiClient } from '@/lib/api';
 
 interface AuthContextType {
@@ -10,6 +10,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: LoginData) => Promise<void>;
+  register: (userData: Omit<RegisterData, 'confirmPassword'>) => Promise<void>;
   logout: () => void;
 }
 
@@ -63,14 +64,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const logout = () => {
-    // Limpar localStorage
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
-    
-    // Limpar estado
-    setToken(null);
-    setUser(null);
+  const register = async (userData: Omit<RegisterData, 'confirmPassword'>) => {
+    try {
+      setIsLoading(true);
+      
+      // Criar usuário na API
+      const response = await apiClient.post<AuthResponse['user']>('/api/auth/register', userData);
+      
+      // Após criar o usuário, fazer login automaticamente
+      const loginResponse = await apiClient.post<AuthResponse>('/api/auth/login', {
+        email: userData.email,
+        password: userData.password,
+      });
+      
+      // Salvar dados no localStorage
+      localStorage.setItem('auth_token', loginResponse.access_token);
+      localStorage.setItem('auth_user', JSON.stringify(loginResponse.user));
+      
+      // Atualizar estado
+      setToken(loginResponse.access_token);
+      setUser(loginResponse.user);
+      
+    } catch (error: any) {
+      console.error('Erro no cadastro:', error);
+      throw new Error(error.response?.data?.detail || error.response?.data?.message || 'Erro ao criar conta');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      // Chamar API de logout se houver token
+      if (token) {
+        await apiClient.post<LogoutResponse>('/api/auth/logout');
+      }
+    } catch (error) {
+      console.error('Erro no logout:', error);
+      // Continuar com o logout local mesmo se a API falhar
+    } finally {
+      // Limpar localStorage
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_user');
+      
+      // Limpar estado
+      setToken(null);
+      setUser(null);
+    }
   };
 
   const value: AuthContextType = {
@@ -79,6 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated: !!token && !!user,
     isLoading,
     login,
+    register,
     logout,
   };
 

@@ -4,15 +4,17 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
-import { LoginData, loginSchema } from '@/lib/validations';
+import { RegisterData, registerSchema } from '@/lib/validations';
 import { validateData } from '@/lib/zod-utils';
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter();
-  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
-  const [formData, setFormData] = useState<LoginData>({
+  const { register, isAuthenticated, isLoading: authLoading } = useAuth();
+  const [formData, setFormData] = useState<RegisterData>({
+    name: '',
     email: '',
     password: '',
+    confirmPassword: '',
   });
   const [formError, setFormError] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,7 +28,7 @@ export default function LoginPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev: LoginData) => ({
+    setFormData((prev: RegisterData) => ({
       ...prev,
       [name]: value,
     }));
@@ -38,7 +40,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     // Validar dados com Zod
-    const validation = validateData(loginSchema, formData);
+    const validation = validateData(registerSchema, formData);
     
     if (!validation.success) {
       setFormError(validation.error || 'Dados inválidos');
@@ -47,10 +49,14 @@ export default function LoginPage() {
     }
 
     try {
-      await login(validation.data);
+      await register({
+        name: validation.data.name,
+        email: validation.data.email,
+        password: validation.data.password,
+      });
       router.push('/tasks');
     } catch (error: any) {
-      setFormError(error.message || 'Erro ao fazer login');
+      setFormError(error.message || 'Erro ao criar conta');
     } finally {
       setIsSubmitting(false);
     }
@@ -59,9 +65,9 @@ export default function LoginPage() {
   // Mostrar loading enquanto verifica autenticação
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
           <p className="text-gray-600 dark:text-gray-300">Verificando autenticação...</p>
         </div>
       </div>
@@ -69,15 +75,15 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center">
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900 dark:text-white">
-            Faça login em sua conta
+            Crie sua conta
           </h2>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-            Acesse suas tarefas e organize seu dia
+            Junte-se a nós e comece a organizar suas tarefas
           </p>
         </div>
 
@@ -91,6 +97,23 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Nome completo *
+              </label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                autoComplete="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
+                placeholder="Seu nome completo"
+                required
+              />
+            </div>
+
+            <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Email *
               </label>
@@ -101,7 +124,7 @@ export default function LoginPage() {
                 autoComplete="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
                 placeholder="seu@email.com"
                 required
               />
@@ -115,11 +138,28 @@ export default function LoginPage() {
                 id="password"
                 name="password"
                 type="password"
-                autoComplete="current-password"
+                autoComplete="new-password"
                 value={formData.password}
                 onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
-                placeholder="Sua senha"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
+                placeholder="Mínimo 6 caracteres"
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Confirmar senha *
+              </label>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                value={formData.confirmPassword}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
+                placeholder="Digite a senha novamente"
                 required
               />
             </div>
@@ -127,7 +167,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
+              className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
             >
               {isSubmitting ? (
                 <span className="flex items-center justify-center">
@@ -135,10 +175,10 @@ export default function LoginPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Entrando...
+                  Criando conta...
                 </span>
               ) : (
-                'Entrar'
+                'Criar conta'
               )}
             </button>
           </form>
@@ -146,12 +186,12 @@ export default function LoginPage() {
           {/* Links */}
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600 dark:text-gray-300">
-              Não tem uma conta?{' '}
+              Já tem uma conta?{' '}
               <Link
-                href="/register"
-                className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+                href="/login"
+                className="font-medium text-green-600 hover:text-green-500 dark:text-green-400 dark:hover:text-green-300"
               >
-                Cadastre-se aqui
+                Faça login aqui
               </Link>
             </p>
           </div>
@@ -170,6 +210,18 @@ export default function LoginPage() {
           </Link>
         </div>
 
+        {/* Informações sobre validação */}
+        <div className="bg-green-50 dark:bg-green-900 rounded-lg p-4">
+          <h4 className="font-semibold text-green-900 dark:text-green-100 mb-2">
+            ✨ Informações sobre Cadastro
+          </h4>
+          <p className="text-green-800 dark:text-green-200 text-sm">
+            Este formulário usa Zod para validação em tempo real. 
+            O nome deve ter pelo menos 2 caracteres, o email deve ser válido, 
+            a senha deve ter pelo menos 6 caracteres e as senhas devem coincidir.
+            Após o cadastro, você será redirecionado para a página de tarefas.
+          </p>
+        </div>
       </div>
     </div>
   );

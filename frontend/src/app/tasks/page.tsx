@@ -4,16 +4,30 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useTaskManagement } from '@/hooks/useTasks';
-import { CreateTask, createTaskSchema } from '@/lib/validations';
+import { CreateTask, createTaskSchema, UpdateTask, updateTaskSchema, Task } from '@/lib/validations';
 import { validateData } from '@/lib/zod-utils';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 
 export default function TasksPage() {
   const router = useRouter();
   const { user, logout } = useAuth();
-  const { tasks, loading, error, createTask, deleteTask, toggleTask } = useTaskManagement();
+  const { tasks, loading, error, createTask, deleteTask, toggleTask, updateTask } = useTaskManagement();
   
   const [showForm, setShowForm] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  // Helpers para lidar com datetime-local (sem timezone)
+  const toDateTimeLocal = (date: Date) => {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const yyyy = date.getFullYear();
+    const MM = pad(date.getMonth() + 1);
+    const dd = pad(date.getDate());
+    const hh = pad(date.getHours());
+    const mm = pad(date.getMinutes());
+    // Formatar apenas até minutos (sem segundos/milisegundos)
+    return `${yyyy}-${MM}-${dd}T${hh}:${mm}`;
+  };
+
   const [formData, setFormData] = useState<CreateTask>({
     title: '',
     description: '',
@@ -21,7 +35,38 @@ export default function TasksPage() {
     priority: 'medium',
     due_date: new Date().toISOString(),
   });
+  
+  // Estados separados para data e hora
+  const [dueDate, setDueDate] = useState(() => {
+    const now = new Date();
+    return now.toISOString().split('T')[0]; // yyyy-MM-dd
+  });
+  
+  const [dueTime, setDueTime] = useState(() => {
+    const now = new Date();
+    return now.toTimeString().slice(0, 5); // HH:mm
+  });
   const [formError, setFormError] = useState<string>('');
+
+  // Estados para edição
+  const [editFormData, setEditFormData] = useState<Omit<UpdateTask, 'id'>>({
+    title: '',
+    description: '',
+    status: 'pending',
+    priority: 'medium',
+    due_date: new Date().toISOString(),
+  });
+  
+  const [editDueDate, setEditDueDate] = useState(() => {
+    const now = new Date();
+    return now.toISOString().split('T')[0]; // yyyy-MM-dd
+  });
+  
+  const [editDueTime, setEditDueTime] = useState(() => {
+    const now = new Date();
+    return now.toTimeString().slice(0, 5); // HH:mm
+  });
+  const [editFormError, setEditFormError] = useState<string>('');
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -31,12 +76,28 @@ export default function TasksPage() {
     }));
   };
 
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDueDate(e.target.value);
+  };
+
+  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDueTime(e.target.value);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
 
-    // Validar dados com Zod
-    const validation = validateData(createTaskSchema, formData);
+    // Combinar data e hora em um datetime ISO
+    const combinedDateTime = new Date(`${dueDate}T${dueTime}:00`).toISOString();
+    
+    const payload: CreateTask = {
+      ...formData,
+      due_date: combinedDateTime,
+    };
+
+    // Validar dados com Zod já no formato ISO esperado pela API
+    const validation = validateData(createTaskSchema, payload);
     
     if (!validation.success) {
       setFormError(validation.error || 'Dados inválidos');
@@ -44,14 +105,18 @@ export default function TasksPage() {
     }
 
     try {
-      await createTask(validation.data);
+      await createTask(validation.data as CreateTask);
       setFormData({ 
         title: '', 
         description: '', 
         status: 'pending', 
         priority: 'medium', 
-        due_date: new Date().toISOString() 
+        due_date: new Date().toISOString()
       });
+      // Resetar campos de data e hora
+      const now = new Date();
+      setDueDate(now.toISOString().split('T')[0]);
+      setDueTime(now.toTimeString().slice(0, 5));
       setShowForm(false);
     } catch (error) {
       setFormError('Erro ao criar tarefa');
@@ -61,6 +126,78 @@ export default function TasksPage() {
   const handleLogout = () => {
     logout();
     router.push('/login');
+  };
+
+  // Funções para edição
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setEditFormData({
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      priority: task.priority,
+      due_date: task.due_date,
+    });
+    
+    // Separar data e hora para os campos separados
+    const taskDate = new Date(task.due_date);
+    setEditDueDate(taskDate.toISOString().split('T')[0]);
+    setEditDueTime(taskDate.toTimeString().slice(0, 5));
+    setEditFormError('');
+    setShowEditModal(true);
+  };
+
+  const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setEditFormData((prev: Omit<UpdateTask, 'id'>) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleEditDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditDueDate(e.target.value);
+  };
+
+  const handleEditTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditDueTime(e.target.value);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEditFormError('');
+
+    if (!editingTask) return;
+
+    // Combinar data e hora em um datetime ISO
+    const combinedDateTime = new Date(`${editDueDate}T${editDueTime}:00`).toISOString();
+    
+    const payload: Omit<UpdateTask, 'id'> = {
+      ...editFormData,
+      due_date: combinedDateTime,
+    };
+
+    // Validar dados com Zod
+    const validation = validateData(updateTaskSchema, payload);
+    
+    if (!validation.success) {
+      setEditFormError(validation.error || 'Dados inválidos');
+      return;
+    }
+
+    try {
+      await updateTask(editingTask.id, validation.data as UpdateTask);
+      setShowEditModal(false);
+      setEditingTask(null);
+    } catch (error) {
+      setEditFormError('Erro ao atualizar tarefa');
+    }
+  };
+
+  const handleCloseEditModal = () => {
+    setShowEditModal(false);
+    setEditingTask(null);
+    setEditFormError('');
   };
 
   return (
@@ -175,19 +312,34 @@ export default function TasksPage() {
                 </div>
               </div>
 
-              <div>
-                <label htmlFor="due_date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Data de Vencimento *
-                </label>
-                <input
-                  type="datetime-local"
-                  id="due_date"
-                  name="due_date"
-                  value={formData.due_date}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  required
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="due_date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Data de Vencimento *
+                  </label>
+                  <input
+                    type="date"
+                    id="due_date"
+                    value={dueDate}
+                    onChange={handleDateChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="due_time" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Horário de Vencimento *
+                  </label>
+                  <input
+                    type="time"
+                    id="due_time"
+                    value={dueTime}
+                    onChange={handleTimeChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    required
+                  />
+                </div>
               </div>
 
               <div className="flex space-x-4">
@@ -294,6 +446,12 @@ export default function TasksPage() {
                     
                     <div className="flex space-x-2 ml-4">
                       <button
+                        onClick={() => handleEditTask(task)}
+                        className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded text-sm hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                      >
+                        Editar
+                      </button>
+                      <button
                         onClick={() => toggleTask(task.id, task.status === 'completed' ? 'pending' : 'completed')}
                         className={`px-3 py-1 rounded text-sm transition-colors ${
                           task.status === 'completed'
@@ -317,18 +475,150 @@ export default function TasksPage() {
           )}
         </div>
 
-        {/* Informações sobre a API */}
-        <div className="mt-8 bg-blue-50 dark:bg-blue-900 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2">
-            ℹ️ Informações sobre as Tarefas
-          </h3>
-          <p className="text-blue-800 dark:text-blue-200 text-sm">
-            Suas tarefas são carregadas da rota <code className="bg-blue-200 dark:bg-blue-800 px-1 rounded">/api/tasks</code>.
-            Você pode criar, marcar como concluída e excluir tarefas. 
-            Todas as operações são validadas com Zod antes de serem enviadas para a API.
-          </p>
-        </div>
       </div>
+
+      {/* Modal de Edição */}
+      {showEditModal && editingTask && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                Editar Tarefa
+              </h2>
+              <button
+                onClick={handleCloseEditModal}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            {editFormError && (
+              <div className="bg-red-100 dark:bg-red-900 border border-red-400 text-red-700 dark:text-red-300 px-4 py-3 rounded mb-4">
+                {editFormError}
+              </div>
+            )}
+
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div>
+                <label htmlFor="edit_title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Título da Tarefa *
+                </label>
+                <input
+                  type="text"
+                  id="edit_title"
+                  name="title"
+                  value={editFormData.title}
+                  onChange={handleEditInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  placeholder="Digite o título da tarefa"
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="edit_description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Descrição *
+                </label>
+                <textarea
+                  id="edit_description"
+                  name="description"
+                  value={editFormData.description}
+                  onChange={handleEditInputChange}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  placeholder="Descreva a tarefa"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="edit_status" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Status
+                  </label>
+                  <select
+                    id="edit_status"
+                    name="status"
+                    value={editFormData.status}
+                    onChange={handleEditInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  >
+                    <option value="pending">Pendente</option>
+                    <option value="in_progress">Em Progresso</option>
+                    <option value="completed">Concluída</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="edit_priority" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Prioridade
+                  </label>
+                  <select
+                    id="edit_priority"
+                    name="priority"
+                    value={editFormData.priority}
+                    onChange={handleEditInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  >
+                    <option value="low">Baixa</option>
+                    <option value="medium">Média</option>
+                    <option value="high">Alta</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="edit_due_date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Data de Vencimento *
+                  </label>
+                  <input
+                    type="date"
+                    id="edit_due_date"
+                    value={editDueDate}
+                    onChange={handleEditDateChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="edit_due_time" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Horário de Vencimento *
+                  </label>
+                  <input
+                    type="time"
+                    id="edit_due_time"
+                    value={editDueTime}
+                    onChange={handleEditTimeChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex space-x-4 pt-4">
+                <button
+                  type="submit"
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Salvar Alterações
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCloseEditModal}
+                  className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
     </ProtectedRoute>
   );

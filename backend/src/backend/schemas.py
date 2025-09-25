@@ -40,6 +40,10 @@ class LoginResponse(BaseModel):
     user: UserPublic
 
 
+class LogoutResponse(BaseModel):
+    message: str = "Logout realizado com sucesso"
+
+
 class TokenData(BaseModel):
     user_id: UUID | None = None
 
