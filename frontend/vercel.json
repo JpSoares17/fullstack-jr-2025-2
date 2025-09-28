@@ -15,11 +15,6 @@
   "env": {
     "NODE_ENV": "production"
   },
-  "functions": {
-    "src/app/**/*.tsx": {
-      "maxDuration": 30
-    }
-  },
   "regions": ["iad1"],
   "framework": "nextjs"
 }
