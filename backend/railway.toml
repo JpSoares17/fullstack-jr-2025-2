@@ -2,7 +2,7 @@
 builder = "dockerfile"
 
 [deploy]
-startCommand = "./start-no-db.sh"
+startCommand = "./start.sh"
 healthcheckPath = "/docs"
 healthcheckTimeout = 100
 restartPolicyType = "on_failure"
