@@ -23,10 +23,10 @@ COPY pyproject.toml poetry.lock README.md ./
 COPY src/ ./src/
 
 # Copy start scripts and test apps
-COPY start.sh start-simple.sh start-debug.sh start-test.sh start-no-db.sh start-no-migrations.sh start-with-migrations.sh test-db-connection.sh test-app.py app-no-db.py ./
+COPY start.sh start-simple.sh start-debug.sh start-test.sh start-no-db.sh start-no-migrations.sh start-with-migrations.sh test-db-connection.sh start-with-db-test.sh test-app.py app-no-db.py ./
 
 # Make start scripts executable
-RUN chmod +x start.sh start-simple.sh start-debug.sh start-test.sh start-no-db.sh start-no-migrations.sh start-with-migrations.sh test-db-connection.sh
+RUN chmod +x start.sh start-simple.sh start-debug.sh start-test.sh start-no-db.sh start-no-migrations.sh start-with-migrations.sh test-db-connection.sh start-with-db-test.sh
 
 # Install only production dependencies
 RUN poetry install --only=main
