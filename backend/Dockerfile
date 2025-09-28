@@ -30,7 +30,7 @@ COPY src/ ./src/
 COPY start.sh ./
 
 # Make start scripts executable
-RUN chmod +x start.sh start-simple.sh start-debug.sh start-test.sh start-no-db.sh start-no-migrations.sh start-with-migrations.sh test-db-connection.sh start-with-db-test.sh start-fixed-migrations.sh
+RUN chmod +x start.sh
 
 # Install only production dependencies
 RUN poetry install --only=main
