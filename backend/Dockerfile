@@ -27,10 +27,10 @@ COPY migrations/ ./migrations/
 COPY src/ ./src/
 
 # Copy start scripts
-COPY start.sh ./
+COPY start.sh start-fallback.sh ./
 
 # Make start scripts executable
-RUN chmod +x start.sh
+RUN chmod +x start.sh start-fallback.sh
 
 # Install only production dependencies
 RUN poetry install --only=main
