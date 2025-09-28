@@ -22,6 +22,12 @@ COPY pyproject.toml poetry.lock README.md ./
 # Copy source code
 COPY src/ ./src/
 
+# Copy start script
+COPY start.sh ./
+
+# Make start script executable
+RUN chmod +x start.sh
+
 # Install only production dependencies
 RUN poetry install --only=main
 
