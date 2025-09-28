@@ -1,9 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Habilitar modo standalone para Docker
-  output: 'standalone',
-  
   // Configurações de ambiente
   env: {
     CUSTOM_KEY: process.env.CUSTOM_KEY,
@@ -11,17 +8,18 @@ const nextConfig: NextConfig = {
   
   // Configurações de build
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: true, // Temporariamente ignorar erros de TypeScript para deploy
   },
   
   // Configurações de ESLint
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: true, // Temporariamente ignorar erros de ESLint para deploy
   },
   
   // Configurações de imagens
   images: {
     domains: ['localhost'],
+    unoptimized: true, // Para evitar problemas com otimização de imagens no Vercel
   },
   
   // Configurações de headers
@@ -37,6 +35,24 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  
+  // Configurações específicas para produção
+  ...(process.env.NODE_ENV === 'production' && {
+    // Otimizações para produção
+    compress: true,
+    poweredByHeader: false,
+    generateEtags: false,
+    
+    // Configurações de cache
+    async rewrites() {
+      return [
+        {
+          source: '/api/:path*',
+          destination: `${process.env.NEXT_PUBLIC_API_BASE_URL}/:path*`,
+        },
+      ];
+    },
+  }),
 };
 
 export default nextConfig;
