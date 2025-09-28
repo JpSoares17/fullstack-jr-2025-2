@@ -15,6 +15,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "https://*.railway.app",  # Permite todos os subdomínios do Railway
+        "https://*.vercel.app",   # Permite todos os subdomínios do Vercel
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
