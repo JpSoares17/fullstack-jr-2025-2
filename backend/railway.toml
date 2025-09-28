@@ -2,7 +2,7 @@
 builder = "dockerfile"
 
 [deploy]
-startCommand = "./start-with-migrations.sh"
+startCommand = "./test-db-connection.sh"
 healthcheckPath = "/docs"
 healthcheckTimeout = 100
 restartPolicyType = "on_failure"
