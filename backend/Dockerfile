@@ -22,12 +22,11 @@ COPY pyproject.toml poetry.lock README.md ./
 # Copy source code
 COPY src/ ./src/
 
-# Install dependencies (including dev dependencies for development)
-RUN poetry install
-
+# Install only production dependencies
+RUN poetry install --only=main
 
 # Expose port
 EXPOSE 8000
 
-# Run the application in development mode with hot reload
-CMD ["fastapi", "dev", "src/backend/app.py", "--host", "0.0.0.0", "--port", "8000"]
+# Run the application in production mode
+CMD ["fastapi", "run", "src/backend/app.py", "--host", "0.0.0.0", "--port", "8000"]
