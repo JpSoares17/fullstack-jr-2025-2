@@ -12,12 +12,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "https://*.railway.app",  # Permite todos os subdomínios do Railway
-        "https://*.vercel.app",   # Permite todos os subdomínios do Vercel
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],  # Permite todas as origens temporariamente
+    allow_credentials=False,  # Deve ser False quando allow_origins=["*"]
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
     expose_headers=["*"],
