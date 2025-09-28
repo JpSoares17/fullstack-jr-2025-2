@@ -2,7 +2,7 @@
 builder = "dockerfile"
 
 [deploy]
-startCommand = "./start-simple.sh"
+startCommand = "./start-test.sh"
 healthcheckPath = "/docs"
 healthcheckTimeout = 100
 restartPolicyType = "on_failure"
