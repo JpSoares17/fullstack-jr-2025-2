@@ -39,4 +39,4 @@ RUN poetry install --only=main
 EXPOSE ${PORT:-8000}
 
 # Run the application in production mode
-CMD ["fastapi", "run", "src/backend/app.py", "--host", "0.0.0.0", "--port", "${PORT:-8000}"]
+CMD ["uvicorn", "src.backend.app:app", "--host", "0.0.0.0", "--port", "${PORT:-8000}"]
