@@ -32,7 +32,7 @@ RUN chmod +x start.sh start-simple.sh start-debug.sh start-test.sh start-no-db.s
 RUN poetry install --only=main
 
 # Expose port
-EXPOSE 8000
+EXPOSE ${PORT:-8000}
 
 # Run the application in production mode
-CMD ["fastapi", "run", "src/backend/app.py", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["fastapi", "run", "src/backend/app.py", "--host", "0.0.0.0", "--port", "${PORT:-8000}"]
