@@ -19,6 +19,10 @@ RUN poetry config virtualenvs.create false
 # Copy Poetry files
 COPY pyproject.toml poetry.lock README.md ./
 
+# Copy Alembic files
+COPY alembic.ini ./
+COPY migrations/ ./migrations/
+
 # Copy source code
 COPY src/ ./src/
 
