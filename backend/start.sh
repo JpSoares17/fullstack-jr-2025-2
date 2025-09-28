@@ -26,4 +26,4 @@ fi
 
 # Iniciar a aplicação FastAPI
 echo "🌐 Iniciando servidor FastAPI..."
-exec uvicorn src.backend.app:app --host 0.0.0.0 --port ${PORT:-8000}
+exec fastapi src.backend.app:app --host 0.0.0.0 --port ${PORT:-8000}
