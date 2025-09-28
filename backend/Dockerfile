@@ -26,8 +26,8 @@ COPY migrations/ ./migrations/
 # Copy source code
 COPY src/ ./src/
 
-# Copy start scripts and test apps
-COPY start.sh start-simple.sh start-debug.sh start-test.sh start-no-db.sh start-no-migrations.sh start-with-migrations.sh test-db-connection.sh start-with-db-test.sh start-fixed-migrations.sh test-app.py app-no-db.py ./
+# Copy start scripts
+COPY start.sh ./
 
 # Make start scripts executable
 RUN chmod +x start.sh start-simple.sh start-debug.sh start-test.sh start-no-db.sh start-no-migrations.sh start-with-migrations.sh test-db-connection.sh start-with-db-test.sh start-fixed-migrations.sh
